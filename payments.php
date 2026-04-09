@@ -10,6 +10,7 @@ if (isset($_POST['action'])) {
 
     if ($_POST['action'] == 'get_payments') {
         $search = isset($_POST['search']) ? sanitize($_POST['search']) : '';
+        $method = isset($_POST['method']) ? sanitize($_POST['method']) : '';
 
         $sql = "SELECT p.*, o.order_id, o.total_amount, o.paid_amount, 
                 c.full_name as customer_name, CASE WHEN o.total_amount > o.paid_amount AND o.paid_amount = 0 THEN 'Unpaid' 
@@ -20,11 +21,15 @@ if (isset($_POST['action'])) {
                 LEFT JOIN customers c ON o.customer_id = c.customer_id
                 WHERE 1=1";
 
-        if (!empty($search)) {
+        if (!empty($search) && (!empty($method))) {
             $sql .= " AND (p.payment_id LIKE '%$search%' 
                     OR o.order_id LIKE '%$search%' 
                     OR c.full_name LIKE '%$search%'
                     OR p.reference_number LIKE '%$search%')";
+        }
+
+        if (!empty($method)) {
+            $sql .= " AND p.payment_method = '$method'";
         }
 
         $sql .= " ORDER BY p.payment_date DESC";
@@ -339,6 +344,14 @@ $payment_methods = ['cash', 'gcash', 'bank_transfer', 'credit'];
                     <i class="fas fa-search"></i>
                 </div>
 
+                <select id="filterMethod" class="filter-select">
+                    <option value="">All Methods</option>
+                    <option value="cash">Cash</option>
+                    <option value="gcash">GCash</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="credit">Credit</option>
+                </select>
+
                 <button class="btn btn-secondary" onclick="loadPayments()">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
@@ -451,6 +464,10 @@ $payment_methods = ['cash', 'gcash', 'bank_transfer', 'credit'];
             $('#searchPayment').on('keyup', function() {
                 loadPayments();
             });
+
+            $('#filterMethod').on('input change', function() {
+                loadPayments();
+            });
         });
 
         function toggleSidebar() {
@@ -460,18 +477,21 @@ $payment_methods = ['cash', 'gcash', 'bank_transfer', 'credit'];
         // Load payments
         function loadPayments() {
             const search = $('#searchPayment').val();
+            const method = $('#filterMethod').val();
 
             $.ajax({
                 url: 'payments.php',
                 type: 'POST',
                 data: {
                     action: 'get_payments',
-                    search: search
+                    search: search,
+                    method: method,
                 },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
                         displayPayments(response.data);
+                        updateActiveFilters(search, method);
                     } else {
                         showError('Failed to load payments');
                     }
@@ -480,6 +500,34 @@ $payment_methods = ['cash', 'gcash', 'bank_transfer', 'credit'];
                     showError('Error loading payments');
                 }
             });
+        }
+
+        function updateActiveFilters(search, method) {
+            let html = '';
+
+            if (search) {
+                html += `<span class="filter-badge">Search: "${escapeHtml(search)}" <i class="fas fa-times" onclick="clearSearch()"></i></span> `;
+            }
+
+            if (method) {
+                html += `<span class="filter-badge">Method: ${escapeHtml(method)} <i class="fas fa-times" onclick="clearMethod()"></i></span> `;
+            }
+
+            if (html) {
+                $('#activeMethods').html(html).show();
+            } else {
+                $('#activeMethods').hide();
+            }
+        }
+
+        function clearSearch() {
+            $('#searchPayment').val('');
+            loadPayments();
+        }
+
+        function clearMethod() {
+            $('#filterMethod').val('');
+            loadPayments();
         }
 
         // Display payments in table
@@ -527,6 +575,7 @@ $payment_methods = ['cash', 'gcash', 'bank_transfer', 'credit'];
 
             $('#paymentsList').html(html);
         }
+
 
         // Load unpaid orders for dropdown
         function loadUnpaidOrders(selectedOrderId = null) {

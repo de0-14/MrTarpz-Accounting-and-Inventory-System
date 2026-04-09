@@ -2,30 +2,34 @@
  * Expenses JavaScript for Mr. Tarpz Printing Shop
  */
 
-$(document).ready(function() {
+$(document).ready(function () {
     loadExpenses();
     loadExpenseCategories();
-    
+
     // Set default dates for filters
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    
+
     $('#fromDate').val(formatDateForInput(firstDay));
     $('#toDate').val(formatDateForInput(today));
-    
+
+    $('#searchExpense').on('keyup', function () {
+        loadPayments();
+    });
+
     // Search and filter events
-    $('#searchExpense, #filterCategory, #fromDate, #toDate').on('input change', function() {
+    $('#filterCategory, #fromDate, #toDate').on('input change', function () {
         loadExpenses();
     });
-    
+
     // Close modals when clicking on X
-    $('.close').on('click', function() {
+    $('.close').on('click', function () {
         closeExpenseModal();
         closeDetailsModal();
     });
-    
+
     // Close modals when clicking outside
-    $(window).on('click', function(event) {
+    $(window).on('click', function (event) {
         if ($(event.target).hasClass('modal')) {
             closeExpenseModal();
             closeDetailsModal();
@@ -41,9 +45,9 @@ function loadExpenses() {
     const category = $('#filterCategory').val();
     const fromDate = $('#fromDate').val();
     const toDate = $('#toDate').val();
-    
+
     $('#expensesList').html('<tr><td colspan="9" class="text-center">Loading expenses...</td></tr>');
-    
+
     $.ajax({
         url: 'expenses.php',
         type: 'POST',
@@ -55,7 +59,7 @@ function loadExpenses() {
             to_date: toDate
         },
         dataType: 'json',
-        success: function(response) {
+        success: function (response) {
             if (response.success) {
                 displayExpenses(response.data);
                 updateExpenseSummary(response.data);
@@ -64,7 +68,7 @@ function loadExpenses() {
                 showError('Failed to load expenses');
             }
         },
-        error: function() {
+        error: function () {
             showError('Error loading expenses');
         }
     });
@@ -76,14 +80,14 @@ function loadExpenses() {
 function displayExpenses(expenses) {
     let html = '';
     let grandTotal = 0;
-    
+
     if (expenses && expenses.length > 0) {
-        expenses.forEach(function(expense) {
+        expenses.forEach(function (expense) {
             grandTotal += parseFloat(expense.amount);
-            
+
             const categoryClass = getCategoryClass(expense.category);
             const date = formatDate(expense.expense_date);
-            
+
             html += `
                 <tr>
                     <td>${date}</td>
@@ -115,7 +119,7 @@ function displayExpenses(expenses) {
     } else {
         html = '<tr><td colspan="9" class="empty-table">No expenses found</td></tr>';
     }
-    
+
     $('#expensesList').html(html);
     $('#grandTotal').text('₱' + grandTotal.toFixed(2));
 }
@@ -128,7 +132,7 @@ function updateExpenseSummary(expenses) {
     const todayTotal = expenses
         .filter(e => e.expense_date === today)
         .reduce((sum, e) => sum + parseFloat(e.amount), 0);
-    
+
     // This week
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -136,7 +140,7 @@ function updateExpenseSummary(expenses) {
     const weekTotal = expenses
         .filter(e => e.expense_date >= weekAgoStr)
         .reduce((sum, e) => sum + parseFloat(e.amount), 0);
-    
+
     // This month
     const monthAgo = new Date();
     monthAgo.setMonth(monthAgo.getMonth() - 1);
@@ -144,7 +148,7 @@ function updateExpenseSummary(expenses) {
     const monthTotal = expenses
         .filter(e => e.expense_date >= monthAgoStr)
         .reduce((sum, e) => sum + parseFloat(e.amount), 0);
-    
+
     $('#todayTotal').text('₱' + todayTotal.toFixed(2));
     $('#weekTotal').text('₱' + weekTotal.toFixed(2));
     $('#monthTotal').text('₱' + monthTotal.toFixed(2));
@@ -155,19 +159,19 @@ function updateExpenseSummary(expenses) {
  */
 function updateActiveFilters(search, category, fromDate, toDate) {
     let html = '';
-    
+
     if (search) {
         html += `<span class="filter-badge">Search: "${escapeHtml(search)}" <i class="fas fa-times" onclick="clearSearch()"></i></span> `;
     }
-    
+
     if (category) {
         html += `<span class="filter-badge">Category: ${escapeHtml(category)} <i class="fas fa-times" onclick="clearCategory()"></i></span> `;
     }
-    
+
     if (fromDate || toDate) {
         html += `<span class="filter-badge">Date: ${fromDate || 'Any'} to ${toDate || 'Any'} <i class="fas fa-times" onclick="clearDates()"></i></span> `;
     }
-    
+
     if (html) {
         $('#activeFilters').html(html).show();
     } else {
@@ -186,10 +190,10 @@ function loadExpenseCategories() {
             action: 'get_expense_categories'
         },
         dataType: 'json',
-        success: function(response) {
+        success: function (response) {
             if (response.success && response.data.length > 0) {
                 let options = '<option value="">Select Category</option>';
-                response.data.forEach(function(cat) {
+                response.data.forEach(function (cat) {
                     options += `<option value="${cat}">${cat}</option>`;
                 });
                 $('#category').html(options);
@@ -221,7 +225,7 @@ function viewExpense(id) {
             expense_id: id
         },
         dataType: 'json',
-        success: function(response) {
+        success: function (response) {
             if (response.success) {
                 const e = response.data;
                 const html = `
@@ -242,7 +246,7 @@ function viewExpense(id) {
                         </div>
                     </div>
                 `;
-                
+
                 $('#expenseDetails').html(html);
                 $('#editFromDetailsBtn').attr('onclick', `editExpense(${e.expense_id})`);
                 $('#detailsModal').show();
@@ -256,7 +260,7 @@ function viewExpense(id) {
  */
 function editExpense(id) {
     closeDetailsModal();
-    
+
     $.ajax({
         url: 'expenses.php',
         type: 'POST',
@@ -265,7 +269,7 @@ function editExpense(id) {
             expense_id: id
         },
         dataType: 'json',
-        success: function(response) {
+        success: function (response) {
             if (response.success) {
                 const e = response.data;
                 $('#expense_id').val(e.expense_id);
@@ -292,34 +296,34 @@ function saveExpense() {
         alert('Please select a date');
         return;
     }
-    
+
     if (!$('#category').val()) {
         alert('Please select a category');
         return;
     }
-    
+
     if (!$('#description').val().trim()) {
         alert('Please enter a description');
         return;
     }
-    
+
     if (!$('#amount').val() || parseFloat($('#amount').val()) <= 0) {
         alert('Please enter a valid amount');
         return;
     }
-    
+
     if (!$('#payment_method').val()) {
         alert('Please select a payment method');
         return;
     }
-    
+
     const expenseId = $('#expense_id').val();
     const action = expenseId ? 'update_expense' : 'add_expense';
-    
+
     const btn = $('#expenseModal .btn-primary');
     const originalText = btn.html();
     btn.html('<i class="fas fa-spinner fa-spin"></i> Saving...').prop('disabled', true);
-    
+
     const data = {
         action: action,
         expense_id: expenseId,
@@ -331,13 +335,13 @@ function saveExpense() {
         reference: $('#reference').val(),
         notes: $('#expense_notes').val()
     };
-    
+
     $.ajax({
         url: 'expenses.php',
         type: 'POST',
         data: data,
         dataType: 'json',
-        success: function(response) {
+        success: function (response) {
             if (response.success) {
                 alert('✅ ' + response.message);
                 closeExpenseModal();
@@ -346,10 +350,10 @@ function saveExpense() {
                 alert('❌ ' + response.message);
             }
         },
-        error: function() {
+        error: function () {
             alert('❌ Error saving expense');
         },
-        complete: function() {
+        complete: function () {
             btn.html(originalText).prop('disabled', false);
         }
     });
@@ -362,7 +366,7 @@ function deleteExpense(id) {
     if (confirm('Are you sure you want to delete this expense? This action cannot be undone.')) {
         const row = $(`button[onclick="deleteExpense(${id})"]`).closest('tr');
         row.addClass('loading');
-        
+
         $.ajax({
             url: 'expenses.php',
             type: 'POST',
@@ -371,7 +375,7 @@ function deleteExpense(id) {
                 expense_id: id
             },
             dataType: 'json',
-            success: function(response) {
+            success: function (response) {
                 if (response.success) {
                     alert('✅ Expense deleted successfully');
                     loadExpenses();
@@ -380,7 +384,7 @@ function deleteExpense(id) {
                     row.removeClass('loading');
                 }
             },
-            error: function() {
+            error: function () {
                 alert('❌ Error deleting expense');
                 row.removeClass('loading');
             }
@@ -396,7 +400,7 @@ function exportExpenses() {
     const category = $('#filterCategory').val();
     const fromDate = $('#fromDate').val();
     const toDate = $('#toDate').val();
-    
+
     $.ajax({
         url: 'expenses.php',
         type: 'POST',
@@ -408,14 +412,14 @@ function exportExpenses() {
             to_date: toDate
         },
         dataType: 'json',
-        success: function(response) {
+        success: function (response) {
             if (response.success && response.data.length > 0) {
                 let csv = 'Date,Category,Description,Amount,Payment Method,Reference,Notes\n';
-                
-                response.data.forEach(function(e) {
+
+                response.data.forEach(function (e) {
                     csv += `"${e.expense_date}","${e.category}","${e.description}","${e.amount}","${e.payment_method}","${e.reference || ''}","${e.notes || ''}"\n`;
                 });
-                
+
                 const blob = new Blob([csv], { type: 'text/csv' });
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
