@@ -16,7 +16,7 @@
         <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </nav>
 
-    <div class="sidebar-footer">
+    <div class="sidebar-footer" style="margin-top: 15px">
         <p><i class="fas fa-user"></i> <?php echo $_SESSION['full_name']; ?></p>
         <p><small><?php echo $_SESSION['role']; ?></small></p>
     </div>
