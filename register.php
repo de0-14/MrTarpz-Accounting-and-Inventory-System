@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $full_name = sanitize($_POST['full_name']);
         $username = sanitize($_POST['username']);
         $email = !empty($_POST['email']) ? sanitize($_POST['email']) : 'NULL';
-        $password = $_POST['password']; // In production, use password_hash()
+        $password = $_POST['password'];
         $role = sanitize($_POST['role']);
         
         // Validate input

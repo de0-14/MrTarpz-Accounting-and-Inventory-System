@@ -124,7 +124,7 @@ if (isset($_POST['action'])) {
         
         try {
             // Insert order
-            $sql = "INSERT INTO orders (customer_id, full_name, phone, email, fb_account, due_date, notes, user_id, order_status, payment_status) 
+            $sql = "INSERT INTO orders (customer_id, due_date, notes, user_id, order_status, payment_status) 
                     VALUES ($customer_id, $due_date, '$notes', '$user_id', 'pending', 'unpaid')";
             
             if (!$conn->query($sql)) {
