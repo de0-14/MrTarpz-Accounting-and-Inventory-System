@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 19, 2026 at 01:26 PM
+-- Generation Time: Apr 14, 2026 at 03:52 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -59,6 +59,7 @@ CREATE TABLE `customers` (
   `full_name` varchar(100) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `email` varchar(100) DEFAULT NULL,
+  `fb_account` varchar(255) DEFAULT NULL,
   `address` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -78,8 +79,16 @@ CREATE TABLE `expenses` (
   `payment_method` varchar(50) DEFAULT NULL,
   `reference` varchar(100) DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `notes` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `expenses`
+--
+
+INSERT INTO `expenses` (`expense_id`, `expense_date`, `category`, `description`, `amount`, `payment_method`, `reference`, `user_id`, `created_at`, `notes`) VALUES
+(1, '2026-04-14', 'Internet', 'wifi', 1200.00, 'gcash', '12345', 1, '2026-04-14 13:51:54', 'on time');
 
 -- --------------------------------------------------------
 
@@ -114,6 +123,9 @@ INSERT INTO `inventory_transactions` (`transaction_id`, `product_id`, `transacti
 CREATE TABLE `orders` (
   `order_id` int(11) NOT NULL,
   `customer_id` int(11) DEFAULT NULL,
+  `customer_type` varchar(50) DEFAULT 'walkin',
+  `customer_name` varchar(200) DEFAULT NULL,
+  `customer_phone` varchar(50) DEFAULT NULL,
   `order_date` timestamp NOT NULL DEFAULT current_timestamp(),
   `due_date` date DEFAULT NULL,
   `total_amount` decimal(10,2) DEFAULT 0.00,
@@ -123,6 +135,14 @@ CREATE TABLE `orders` (
   `notes` text DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `orders`
+--
+
+INSERT INTO `orders` (`order_id`, `customer_id`, `customer_type`, `customer_name`, `customer_phone`, `order_date`, `due_date`, `total_amount`, `paid_amount`, `order_status`, `payment_status`, `notes`, `user_id`) VALUES
+(1, NULL, 'walkin', NULL, NULL, '2026-04-08 05:06:18', NULL, 2500.00, 1250.00, 'pending', 'partial', 'nigga', 1),
+(2, NULL, 'online', NULL, NULL, '2026-04-14 13:23:35', '2026-04-03', 350.00, 350.00, 'pending', 'paid', '123123123', 1);
 
 -- --------------------------------------------------------
 
@@ -140,6 +160,14 @@ CREATE TABLE `order_items` (
   `specifications` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `order_items`
+--
+
+INSERT INTO `order_items` (`order_item_id`, `order_id`, `product_id`, `quantity`, `unit_price`, `subtotal`, `specifications`) VALUES
+(1, 1, 4, 10, 250.00, 2500.00, 'black'),
+(2, 2, 5, 1, 350.00, 350.00, '');
+
 -- --------------------------------------------------------
 
 --
@@ -156,6 +184,14 @@ CREATE TABLE `payments` (
   `notes` text DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `payments`
+--
+
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_date`, `payment_method`, `reference_number`, `notes`, `user_id`) VALUES
+(2, 1, 1250.00, '2026-04-08 06:33:21', 'gcash', '123123', 'daasd', 1),
+(3, 2, 350.00, '2026-04-14 13:24:01', 'cash', NULL, '', 1);
 
 -- --------------------------------------------------------
 
@@ -190,6 +226,30 @@ INSERT INTO `products` (`product_id`, `category_id`, `product_name`, `descriptio
 (7, 4, 'Vinyl Sticker', 'Per sq ft vinyl sticker', 120.00, 50.00, 200, 10, 'finished', '2026-03-16 04:37:17'),
 (8, 5, 'Black & White Xerox', 'Per page', 3.00, 1.00, 1000, 10, 'finished', '2026-03-16 04:37:17'),
 (9, 5, 'Colored Xerox', 'Per page', 10.00, 4.00, 500, 10, 'finished', '2026-03-16 04:37:17');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `reports`
+--
+
+CREATE TABLE `reports` (
+  `report_id` int(11) NOT NULL,
+  `report_name` varchar(255) NOT NULL,
+  `file_path` varchar(255) NOT NULL,
+  `date_range` varchar(50) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `reports`
+--
+
+INSERT INTO `reports` (`report_id`, `report_name`, `file_path`, `date_range`, `created_at`) VALUES
+(1, 'Financial Report (Today)', 'report_2026-04-14_21-09-45.xlsx', 'Today', '2026-04-14 13:09:46'),
+(2, 'Financial Report (Today)', 'report_2026-04-14_21-24-11.xlsx', 'Today', '2026-04-14 13:24:12'),
+(3, 'Financial Report (1 month)', 'reports/report_2026-04-14_21-28-31.xlsx', '1 month', '2026-04-14 13:28:34'),
+(4, 'Financial Report (1 month)', 'reports/report_2026-04-14_21-52-06.xlsx', '1 month', '2026-04-14 13:52:09');
 
 -- --------------------------------------------------------
 
@@ -279,6 +339,12 @@ ALTER TABLE `products`
   ADD KEY `category_id` (`category_id`);
 
 --
+-- Indexes for table `reports`
+--
+ALTER TABLE `reports`
+  ADD PRIMARY KEY (`report_id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -305,7 +371,7 @@ ALTER TABLE `customers`
 -- AUTO_INCREMENT for table `expenses`
 --
 ALTER TABLE `expenses`
-  MODIFY `expense_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `expense_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `inventory_transactions`
@@ -317,25 +383,31 @@ ALTER TABLE `inventory_transactions`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `order_item_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `order_item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
   MODIFY `product_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+
+--
+-- AUTO_INCREMENT for table `reports`
+--
+ALTER TABLE `reports`
+  MODIFY `report_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `users`
