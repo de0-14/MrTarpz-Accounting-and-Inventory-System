@@ -5,8 +5,14 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 def convert():
-    filename = sys.argv[1] if len(sys.argv) > 1 else "report.xlsx"
+    # Get the full file path from command line argument
+    filename = sys.argv[1] if len(sys.argv) > 1 else "reports/report.xlsx"
+    
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    
     if not os.path.exists('temp_data.json'):
+        print("Error: temp_data.json not found")
         return
 
     with open('temp_data.json', 'r') as f:
@@ -43,7 +49,9 @@ def convert():
         ws2.append(total_row)
         ws2[f'A{ws2.max_row}'].font = Font(bold=True)
 
+    # Save to the specified path
     wb.save(filename)
+    print(f"Report saved to: {filename}")
     
     # Cleanup
     if os.path.exists('temp_data.json'):

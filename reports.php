@@ -4,6 +4,12 @@ if (!isLoggedIn()) {
     redirect('index.php');
 }
 
+// Create reports directory if it doesn't exist
+$reports_dir = __DIR__ . '/reports/';
+if (!file_exists($reports_dir)) {
+    mkdir($reports_dir, 0777, true);
+}
+
 // --- AJAX AND ACTION HANDLING ---
 if (isset($_POST['action'])) {
     header('Content-Type: application/json');
@@ -13,6 +19,9 @@ if (isset($_POST['action'])) {
         $range = sanitize($_POST['range']);
         $timestamp = date('Y-m-d_H-i-s');
         $filename = "report_$timestamp.xlsx";
+        
+        // Save to reports folder
+        $filepath = $reports_dir . $filename;
 
         // Date filter logic
         switch ($range) {
@@ -61,31 +70,49 @@ if (isset($_POST['action'])) {
             ]
         ];
 
-        file_put_contents('temp_data.json', json_encode($package));
+        file_put_contents(__DIR__ . '/temp_data.json', json_encode($package));
         
-        // WINDOWS FIX: Use the exact absolute path to your Python installation
-        $python_path = "C:/Program Files (x86)/Python314-32/python.exe";
+        // Try different Python commands
+        $python_output = "";
+        $python_commands = [
+            "py convert_to_excel.py \"$filepath\" 2>&1",
+            "python convert_to_excel.py \"$filepath\" 2>&1",
+            "python3 convert_to_excel.py \"$filepath\" 2>&1"
+        ];
         
-        // Execute the script using the path wrapped in quotes
-        $python_output = shell_exec("\"$python_path\" convert_to_excel.py $filename 2>&1");
-
-        // If Python threw an error, stop and show it in the browser!
-        if (trim($python_output) != "") {
-             echo json_encode(['success' => false, 'message' => 'Python Error: ' . $python_output]);
-             exit;
+        foreach ($python_commands as $cmd) {
+            $test_output = shell_exec($cmd);
+            if (file_exists($filepath)) {
+                $python_output = $test_output;
+                break;
+            }
         }
 
+        // If Python threw an error or file not created, show error
+        if (!file_exists($filepath)) {
+            echo json_encode(['success' => false, 'message' => 'Failed to generate report. Python error: ' . $python_output]);
+            exit;
+        }
+
+        // Store relative path in database (for web access)
+        $relative_path = "reports/" . $filename;
+        
         // Log in DB 
         $stmt = $conn->prepare("INSERT INTO reports (report_name, file_path, date_range) VALUES (?, ?, ?)");
         $name = "Financial Report ($range)";
-        $stmt->bind_param("sss", $name, $filename, $range);
+        $stmt->bind_param("sss", $name, $relative_path, $range);
         
         if (!$stmt->execute()) {
              echo json_encode(['success' => false, 'message' => 'Failed to save record to Reports table: ' . $conn->error]);
              exit;
         }
 
-        echo json_encode(['success' => true]);
+        // Clean up temp file
+        if (file_exists(__DIR__ . '/temp_data.json')) {
+            unlink(__DIR__ . '/temp_data.json');
+        }
+
+        echo json_encode(['success' => true, 'file_path' => $relative_path]);
         exit;
     }
 
@@ -106,7 +133,13 @@ if (isset($_POST['action'])) {
     if ($_POST['action'] == 'delete_report') {
         $id = sanitize($_POST['report_id']);
         $file = sanitize($_POST['file_path']);
-        if (file_exists($file)) unlink($file); // Remove physical file
+        
+        // Delete physical file from reports folder
+        $full_path = __DIR__ . '/' . $file;
+        if (file_exists($full_path)) {
+            unlink($full_path);
+        }
+        
         $conn->query("DELETE FROM reports WHERE report_id = '$id'");
         echo json_encode(['success' => true]);
         exit;
@@ -123,6 +156,35 @@ if (isset($_POST['action'])) {
     <title>Reports - Mr. Tarpz Printing Shop</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .report-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .filter-select {
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            background: white;
+        }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 0 2px;
+        }
+    </style>
 </head>
 
 <body>
@@ -136,11 +198,11 @@ if (isset($_POST['action'])) {
 
             <div class="content-header">
                 <h1><i class="fas fa-file-invoice"></i> Reports Management</h1>
-                <div class="report-actions" style="display: flex; gap: 10px;">
+                <div class="report-actions">
                     <select id="reportRange" class="filter-select" style="margin-bottom: 0;">
                         <option value="Today">Today</option>
                         <option value="1 week">1 Week</option>
-                        <option value="1 month">1 Month</option>
+                        <option value="1 month" selected>1 Month</option>
                         <option value="6 months">6 Months</option>
                     </select>
                     <button class="btn btn-primary" onclick="generateReport()">
@@ -174,7 +236,6 @@ if (isset($_POST['action'])) {
                             <td colspan="4" class="text-center">Loading reports...</td>
                         </tr>
                     </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -201,17 +262,17 @@ if (isset($_POST['action'])) {
                             <td><span class="badge badge-info">${report.date_range}</span></td>
                             <td>
                                 <a href="${report.file_path}" class="btn btn-sm btn-secondary" download>
-                                    <i class="fas fa-download"></i>
+                                    <i class="fas fa-download"></i> Download
                                 </a>
                                 <button class="btn btn-sm btn-danger" onclick="deleteReport(${report.report_id}, '${report.file_path}')">
-                                    <i class="fas fa-trash"></i>
+                                    <i class="fas fa-trash"></i> Delete
                                 </button>
                             </td>
                         </tr>`;
                     });
                     $('#reportsList').html(html || '<tr><td colspan="4" class="text-center">No reports found</td></tr>');
                 }
-            });
+            }, 'json');
         }
 
         function generateReport() {
@@ -227,17 +288,16 @@ if (isset($_POST['action'])) {
                 success: function(response) {
                     btn.prop('disabled', false).html('<i class="fas fa-cog"></i> Generate Report');
                     if (response.success) {
-                        alert('Report generated successfully!');
+                        alert('✅ Report generated successfully!');
                         loadReports();
                     } else {
-                        // This will now print the EXACT error from PHP or Python
-                        alert('Error: ' + response.message); 
+                        alert('❌ Error: ' + response.message);
                     }
                 },
                 error: function(xhr, status, error) {
                     btn.prop('disabled', false).html('<i class="fas fa-cog"></i> Generate Report');
-                    alert('Server Error: Check your PHP error logs. Something crashed.');
-                    console.error(xhr.responseText); // Look in your browser's Developer Tools Console for this
+                    alert('Server Error: ' + error);
+                    console.error(xhr.responseText);
                 }
             });
         }
@@ -248,9 +308,12 @@ if (isset($_POST['action'])) {
                     action: 'delete_report',
                     report_id: id,
                     file_path: path
-                }, function() {
-                    loadReports();
-                });
+                }, function(response) {
+                    if (response.success) {
+                        loadReports();
+                        alert('Report deleted successfully');
+                    }
+                }, 'json');
             }
         }
 
