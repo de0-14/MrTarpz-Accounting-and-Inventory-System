@@ -1,6 +1,6 @@
 # Mr. Tarpz Printing Shop Management System
 
-A customized, web-based Point of Sale (POS), Inventory Control, Order Tracking, Payments Ledger, and Expense Management system designed specifically for tarpaulin, sticker, and layout digital printing establishments.
+A customized and simple-beginner, web-based Point of Sale (POS), Inventory Control, Order Tracking, Payments Ledger, and Expense Management system designed specifically for tarpaulin, sticker, and layout digital printing establishments.
 
 ---
 
